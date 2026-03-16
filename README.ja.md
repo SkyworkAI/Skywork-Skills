@@ -6,6 +6,8 @@ AIオフィススイート向けのAgent Skills。AI PPT、AI Document、AI Exce
 
 これらのスキルは、Claude Code、Codex CLI、OpenClaw を含む、skills互換エージェントで利用できます。
 
+詳しくは [skywork.ai/skill-landing](https://skywork.ai/skill-landing) をご覧ください。
+
 ## インストール
 
 ### `npx skills`

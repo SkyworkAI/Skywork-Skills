@@ -6,6 +6,8 @@
 
 这些技能可用于任何兼容 skills 的 agent，包括 Claude Code、Codex CLI 和 OpenClaw。
 
+访问 [skywork.ai/skill-landing](https://skywork.ai/skill-landing) 开始使用。
+
 ## 安装
 
 ### `npx skills`

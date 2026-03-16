@@ -6,6 +6,8 @@ Agent Skills for AI office suites, including AI PPT, AI Document, AI Excel, AI I
 
 These skills can be used by any skills-compatible agent, including Claude Code, Codex CLI and OpenClaw.
 
+Get started at [skywork.ai/skill-landing](https://skywork.ai/skill-landing).
+
 ## Installation
 
 ### `npx skills`
