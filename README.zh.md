@@ -4,7 +4,7 @@
 
 面向 AI 办公套件的 Agent Skills，覆盖 AI PPT、AI 文档、AI Excel、AI 图像、AI 搜索/深度研究与 AI 音乐。
 
-这些技能可用于任何兼容 skills 的 agent，包括 Claude Code 和 Codex CLI。
+这些技能可用于任何兼容 skills 的 agent，包括 Claude Code、Codex CLI 和 OpenClaw。
 
 ## 安装
 

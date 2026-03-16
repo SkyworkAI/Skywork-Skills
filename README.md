@@ -4,7 +4,7 @@
 
 Agent Skills for AI office suites, including AI PPT, AI Document, AI Excel, AI Image, AI Search/DeepResearch and AI Music.
 
-These skills can be used by any skills-compatible agent, including Claude Code and Codex CLI.
+These skills can be used by any skills-compatible agent, including Claude Code, Codex CLI and OpenClaw.
 
 ## Installation
 

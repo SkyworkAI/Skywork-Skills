@@ -4,7 +4,7 @@
 
 AI 오피스 스위트를 위한 Agent Skills로, AI PPT, AI Document, AI Excel, AI Image, AI Search/DeepResearch, AI Music을 지원합니다.
 
-이 스킬들은 Claude Code, Codex CLI를 포함한 모든 skills 호환 에이전트에서 사용할 수 있습니다.
+이 스킬들은 Claude Code, Codex CLI, OpenClaw를 포함한 모든 skills 호환 에이전트에서 사용할 수 있습니다.
 
 ## 설치
 

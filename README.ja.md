@@ -4,7 +4,7 @@
 
 AIオフィススイート向けのAgent Skills。AI PPT、AI Document、AI Excel、AI Image、AI Search/DeepResearch、AI Musicに対応しています。
 
-これらのスキルは、Claude Code や Codex CLI を含む、skills互換エージェントで利用できます。
+これらのスキルは、Claude Code、Codex CLI、OpenClaw を含む、skills互換エージェントで利用できます。
 
 ## インストール
 
