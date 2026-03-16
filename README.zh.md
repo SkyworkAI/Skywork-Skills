@@ -20,7 +20,7 @@ npx skills add git@github.com:SkyworkAI/Skywork-Skills.git
 
 ### Codex CLI
 
-将 `skills/` 目录复制到你的 Codex skills 路径（通常是 `~/.codex/skills`）。标准技能格式请参考 [Agent Skills 规范](https://github.com/anthropics/agent-skills)。
+将 `skills/` 目录复制到你的 Codex skills 路径（通常是 `~/.codex/skills`）。
 
 ### OpenCode
 

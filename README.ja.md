@@ -20,7 +20,7 @@ npx skills add git@github.com:SkyworkAI/Skywork-Skills.git
 
 ### Codex CLI
 
-`skills/` ディレクトリを Codex の skills パス（通常は `~/.codex/skills`）にコピーしてください。標準フォーマットは [Agent Skills specification](https://github.com/anthropics/agent-skills) を参照してください。
+`skills/` ディレクトリを Codex の skills パス（通常は `~/.codex/skills`）にコピーしてください。
 
 ### OpenCode
 

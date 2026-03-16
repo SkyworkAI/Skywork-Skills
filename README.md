@@ -20,7 +20,7 @@ Add the contents of this repo to a `/.claude` folder in the root of your project
 
 ### Codex CLI
 
-Copy the `skills/` directory into your Codex skills path (typically `~/.codex/skills`). See the [Agent Skills specification](https://github.com/anthropics/agent-skills) for the standard skill format.
+Copy the `skills/` directory into your Codex skills path (typically `~/.codex/skills`).
 
 ### OpenCode
 
