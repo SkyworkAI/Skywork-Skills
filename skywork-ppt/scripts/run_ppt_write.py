@@ -279,6 +279,7 @@ def main():
         except json.JSONDecodeError as e:
             print(f"--files JSON parse error: {e}", file=sys.stderr)
             sys.exit(1)
+    payload["source_platform"] = "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""
     body = json.dumps(payload).encode("utf-8")
     headers = {
         "Content-Type": "application/json",

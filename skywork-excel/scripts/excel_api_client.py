@@ -28,15 +28,78 @@ Usage:
         client.download_file(f["file_id"], f"./{f['name']}")
 """
 
+import datetime
 import json
 import os
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
+import uuid
 from typing import Optional
 
 from skywork_auth import get_skywork_token as _auth_get_token
+
+
+# ---------------------------------------------------------------------------
+# Log file support (for OpenClaw progress polling)
+# ---------------------------------------------------------------------------
+
+_LOG_FILE: Optional[str] = None
+
+
+def _init_log_file(session_id: str = "", log_path: str = "") -> str:
+    """Initialize log file for this session."""
+    global _LOG_FILE
+    if log_path:
+        _LOG_FILE = log_path
+    else:
+        if not session_id:
+            session_id = str(uuid.uuid4()).replace('-', '_')
+        _LOG_FILE = f"/tmp/excel_run_{session_id}.log"
+    # Clear previous run
+    open(_LOG_FILE, "w").close()
+    return _LOG_FILE
+
+
+def write_log(line: str) -> None:
+    """
+    Append a timestamped line to both stdout and log file.
+    This keeps OpenClaw informed of progress during long-running tasks.
+    """
+    global _LOG_FILE
+    try:
+        time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_str = f"{time_str} {line.rstrip()}\n"
+        print(log_str, end="", flush=True)
+        if _LOG_FILE:
+            with open(_LOG_FILE, "a", encoding="utf-8") as f:
+                f.write(log_str)
+                f.flush()
+    except Exception:
+        pass
+
+
+class HeartbeatThread(threading.Thread):
+    """
+    Background thread that outputs heartbeat messages every N seconds.
+    This keeps OpenClaw informed that the process is still alive,
+    even when the main thread is blocked waiting for SSE data.
+    """
+    def __init__(self, interval: int = 30):
+        super().__init__(daemon=True)
+        self.interval = interval
+        self.start_time = time.time()
+        self._stop_event = threading.Event()
+
+    def run(self):
+        while not self._stop_event.wait(self.interval):
+            elapsed_min = (time.time() - self.start_time) / 60
+            write_log(f"[HEARTBEAT] Still processing... ({elapsed_min:.1f} minutes elapsed)")
+
+    def stop(self):
+        self._stop_event.set()
 
 SKYWORK_GATEWAY_URL = os.environ.get("SKYWORK_GATEWAY_URL", "https://api-tools.skywork.ai/theme-gateway").rstrip("/")
 
@@ -83,7 +146,8 @@ class ExcelAgentClient:
         
         self.timeout = timeout
         self._headers = {"token": self.token} if self.token else {}
-        
+        self._source_platform = "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""
+
         # Note: Token logging removed to avoid OpenClaw treating stderr as error
 
     def _build_request(
@@ -215,7 +279,8 @@ class ExcelAgentClient:
         session_id: str = "",
         language: str = "zh-CN",
         verbose: bool = True,
-        new_session: bool = False
+        new_session: bool = False,
+        log_path: str = ""
     ) -> tuple[list[dict], str]:
         """
         Run the Excel Agent with streaming progress display.
@@ -226,6 +291,7 @@ class ExcelAgentClient:
             session_id: Session ID for multi-turn conversations (optional)
             language: "zh-CN" (Chinese) or "en-US" (English)
             verbose: Whether to print progress to stdout
+            log_path: Custom log file path (optional, auto-generated if empty)
 
         Returns:
             tuple of (output_files, session_id):
@@ -241,27 +307,45 @@ class ExcelAgentClient:
         Raises:
             urllib.error.HTTPError: If request fails
         """
+        # Initialize log file for progress tracking
+        run_session_id = session_id if session_id else str(uuid.uuid4()).replace('-', '_')
+        if log_path:
+            global _LOG_FILE
+            _LOG_FILE = log_path
+            open(_LOG_FILE, "w").close()
+        else:
+            _init_log_file(run_session_id)
+        
+        write_log(f"[PID] {os.getpid()}")
+        write_log(f"[LOG-File]: {_LOG_FILE}")
+        write_log(f"[START] Excel Agent task starting. This may take 5-25 minutes, please wait and check the progress log!")
+
         payload = {
             "message": message,
             "file_ids": file_ids or [],
             "session_id": session_id,
             "language": language,
-            "new_session": new_session
+            "new_session": new_session,
+            "source_platform": self._source_platform,
         }
 
         output_files = []
         actual_session_id = session_id  # Will be updated from session_start event
 
         if verbose:
-            print(f"\n🚀 Starting Excel Agent...", flush=True)
-            print(f"⏱️  Timeout: {self.timeout}s (complex tasks may take 5-10 minutes)", flush=True)
-            print("=" * 60, flush=True)
-            print("📡 Connecting to backend...", end="", flush=True)
+            write_log(f"🚀 Starting Excel Agent...")
+            write_log(f"⏱️  Timeout: {self.timeout}s (complex tasks may take 5-25 minutes)")
+            write_log("=" * 60)
 
         headers = {"Content-Type": "application/json"}
         start_time = time.time()
-        last_activity_time = start_time
         connected = False
+
+        # Start heartbeat thread to output progress every 30 seconds
+        # This runs in background so it works even when main thread is blocked on SSE
+        heartbeat = HeartbeatThread(interval=30)
+        heartbeat.start_time = start_time
+        heartbeat.start()
 
         req = self._build_request(
             url=f"{self.base_url}/api/sse/excel-agent/chat",
@@ -269,103 +353,130 @@ class ExcelAgentClient:
             headers=headers,
             data=json.dumps(payload).encode("utf-8")
         )
-        with self._urlopen(req) as resp:
-            for raw_line in resp:
-                line = raw_line.decode("utf-8", errors="ignore").strip()
-                # Show connection success on first data
-                if not connected and verbose:
-                    elapsed = time.time() - start_time
-                    print(f" connected ({elapsed:.1f}s)", flush=True)
-                    print("🤖 Agent is working...\n", flush=True)
-                    connected = True
+        try:
+            with self._urlopen(req) as resp:
+                for raw_line in resp:
+                    line = raw_line.decode("utf-8", errors="ignore").strip()
+                    # Show connection success on first data
+                    if not connected and verbose:
+                        elapsed = time.time() - start_time
+                        write_log(f"📡 Connected to backend ({elapsed:.1f}s)")
+                        write_log("🤖 Agent is working...")
+                        connected = True
 
-                if not line.startswith("data: "):
-                    continue
+                    if not line.startswith("data: "):
+                        continue
 
-                try:
-                    event = json.loads(line[6:])
-                except json.JSONDecodeError:
-                    continue
+                    try:
+                        event = json.loads(line[6:])
+                    except json.JSONDecodeError:
+                        continue
 
-                last_activity_time = time.time()
-                event_type = event.get("type")
+                    event_type = event.get("type")
 
-                if event_type == "session_start":
-                    # Capture the actual session_id from server
-                    actual_session_id = event.get("session_id", session_id)
-                    if verbose and not session_id:
-                        # Only show if user didn't provide one
-                        print(f"\n📋 Session ID: {actual_session_id}", flush=True)
+                    if event_type == "session_start":
+                        # Capture the actual session_id from server
+                        actual_session_id = event.get("session_id", session_id)
+                        if verbose and not session_id:
+                            write_log(f"📋 Session ID: {actual_session_id}")
 
-                elif event_type == "progress":
-                    # Stream LLM output
-                    if verbose:
-                        print(event["content"], end="", flush=True)
+                    elif event_type == "progress":
+                        # Stream LLM output - write to log but keep it concise
+                        content = event.get("content", "")
+                        if verbose and content:
+                            # For progress, just print without timestamp to avoid clutter
+                            print(content, end="", flush=True)
+                            # Write to log file periodically (every 500 chars)
+                            if len(content) > 100:
+                                write_log(f"[PROGRESS] LLM generating... ({len(content)} chars)")
 
-                elif event_type == "tool_start":
-                    # Tool execution starting
-                    if verbose:
-                        tool_name = event["name"]
-                        brief = event.get("brief", "")
-                        print(f"\n\n🔧 Tool: [{tool_name}] {brief}", flush=True)
+                    elif event_type == "tool_start":
+                        # Tool execution starting
+                        if verbose:
+                            tool_name = event["name"]
+                            brief = event.get("brief", "")
+                            write_log(f"\n🔧 Tool: [{tool_name}] {brief}")
 
-                elif event_type == "tool_result":
-                    # Tool execution completed
-                    if verbose:
-                        success = event.get("success", True)
-                        summary = event.get("summary", "")[:300]
-                        icon = "✅" if success else "❌"
-                        print(f"   {icon} {summary}", flush=True)
-
-                elif event_type == "clarification_needed":
-                    # Agent needs user input
-                    if verbose:
-                        card = event.get("card", {})
-                        question = card.get("question", "")
-                        options = card.get("options", [])
-                        print(f"\n\n❓ Clarification needed: {question}", flush=True)
-                        for opt in options:
-                            print(f"   - {opt}", flush=True)
-
-                elif event_type == "output_files":
-                    # Final output files
-                    output_files = event["files"]
-                    if verbose:
-                        print(f"\n\n📁 Output files ({len(output_files)}):", flush=True)
-                        for f in output_files:
-                            oss_url = f.get('oss_url')
-                            if oss_url:
-                                print(f"   - {f['name']}  ({f['size']:,} bytes)", flush=True)
-                                print(f"     ☁️ OSS: {oss_url}", flush=True)
+                    elif event_type == "tool_result":
+                        # Tool execution completed
+                        if verbose:
+                            tool_name = event.get("name", "")
+                            success = event.get("success", True)
+                            summary = event.get("summary", "")
+                            if isinstance(summary, str):
+                                summary = summary[:300]
                             else:
-                                print(f"   - {f['name']}  ({f['size']:,} bytes)  id={f['file_id']}", flush=True)
+                                summary = str(summary)[:300]
+                            icon = "✅" if success else "❌"
+                            
+                            # Special handling for todo_write - output clear progress summary
+                            if tool_name == "todo_write":
+                                write_log(f"\n{'='*60}")
+                                write_log(f"📋 [TASK PROGRESS UPDATE]")
+                                # Parse todo items from summary
+                                try:
+                                    for line in summary.split('\n'):
+                                        line = line.strip()
+                                        if line:
+                                            write_log(f"   {line}")
+                                except Exception as e:
+                                    write_log(f"   {summary}")
+                                write_log(f"{'='*60}")
+                            else:
+                                write_log(f"   {icon} {summary}")
 
-                elif event_type == "usage":
-                    # Token usage info (optional display)
-                    pass
+                    elif event_type == "clarification_needed":
+                        # Agent needs user input
+                        if verbose:
+                            card = event.get("card", {})
+                            question = card.get("question", "")
+                            options = card.get("options", [])
+                            write_log(f"\n❓ Clarification needed: {question}")
+                            for opt in options:
+                                write_log(f"   - {opt}")
 
-                elif event_type == "usage_summary":
-                    # Final cumulative usage
-                    if verbose:
-                        usage = event.get("usage", {})
-                        total_tokens = usage.get("total_tokens", 0)
-                        iterations = event.get("iterations", 0)
-                        print(f"\n📊 Total tokens: {total_tokens:,} ({iterations} iterations)", flush=True)
+                    elif event_type == "output_files":
+                        # Final output files
+                        output_files = event["files"]
+                        if verbose:
+                            write_log(f"\n📁 Output files ({len(output_files)}):")
+                            for f in output_files:
+                                oss_url = f.get('oss_url')
+                                if oss_url:
+                                    write_log(f"   - {f['name']}  ({f['size']:,} bytes)")
+                                    write_log(f"     ☁️ OSS: {oss_url}")
+                                else:
+                                    write_log(f"   - {f['name']}  ({f['size']:,} bytes)  id={f['file_id']}")
 
-                elif event_type == "done":
-                    # Agent completed
-                    if verbose:
-                        stop_reason = event.get("stop_reason", "unknown")
-                        total_time = time.time() - start_time
-                        print(f"\n\n✅ Done. stop_reason={stop_reason}", flush=True)
-                        print(f"⏱️  Total time: {total_time:.1f}s ({total_time/60:.1f} minutes)", flush=True)
-                    break
+                    elif event_type == "usage":
+                        # Token usage info (optional display)
+                        pass
 
-                elif event_type == "error":
-                    # Error occurred
-                    error_msg = event.get("message", "Unknown error")
-                    print(f"\n\n❌ Error: {error_msg}", file=sys.stderr)
-                    break
+                    elif event_type == "usage_summary":
+                        # Final cumulative usage
+                        if verbose:
+                            usage = event.get("usage", {})
+                            total_tokens = usage.get("total_tokens", 0)
+                            iterations = event.get("iterations", 0)
+                            write_log(f"\n📊 Total tokens: {total_tokens:,} ({iterations} iterations)")
+
+                    elif event_type == "done":
+                        # Agent completed
+                        if verbose:
+                            stop_reason = event.get("stop_reason", "unknown")
+                            total_time = time.time() - start_time
+                            write_log(f"\n[DONE] stop_reason={stop_reason}")
+                            write_log(f"⏱️  Total time: {total_time:.1f}s ({total_time/60:.1f} minutes)")
+                        break
+
+                    elif event_type == "error":
+                        # Error occurred
+                        error_msg = event.get("message", "Unknown error")
+                        write_log(f"\n[ERROR] {error_msg}")
+                        break
+        finally:
+            # Stop heartbeat thread when done
+            heartbeat.stop()
 
         return output_files, actual_session_id
 
@@ -408,6 +519,8 @@ def main():
                         help="Backend service URL")
     parser.add_argument("--timeout", type=int, default=900,
                         help="Request timeout in seconds (default: 900)")
+    parser.add_argument("--log-path", default="",
+                        help="Path to save progress log (default: /tmp/excel_run_<session>.log)")
 
     args = parser.parse_args()
 
@@ -427,13 +540,16 @@ def main():
     # Upload files
     file_ids = []
     if args.files:
-        print(f"Uploading {len(args.files)} file(s)...")
+        write_log(f"📤 Uploading {len(args.files)} file(s):")
+        for file_path in args.files:
+            write_log(f"   - {file_path}")
         for file_path in args.files:
             try:
                 file_id = client.upload_file(file_path)
                 file_ids.append(file_id)
+                write_log(f"   ✅ {os.path.basename(file_path)} -> file_id={file_id}")
             except Exception as e:
-                print(f"❌ Failed to upload {file_path}: {e}")
+                write_log(f"   ❌ Failed to upload {file_path}: {e}")
                 sys.exit(1)
         print()
 
@@ -444,7 +560,8 @@ def main():
             file_ids=file_ids,
             session_id=args.session or "",
             language=args.lang,
-            new_session=args.new_session
+            new_session=args.new_session,
+            log_path=args.log_path
         )
     except Exception as e:
         print(f"\n❌ Agent failed: {e}", file=sys.stderr)
@@ -456,17 +573,26 @@ def main():
 
     # Download outputs
     if output_files:
-        print(f"\nDownloading {len(output_files)} output file(s)...")
+        write_log(f"\n📥 Downloading {len(output_files)} output file(s)...")
         for f in output_files:
-            save_path = f"{args.output_dir}/{f['name']}"
+            save_path = os.path.abspath(f"{args.output_dir}/{f['name']}")
+            oss_url = f.get('oss_url', '')
             try:
                 client.download_file(f["file_id"], save_path)
+                write_log(f"   ✅ {f['name']}")
+                write_log(f"      📁 Local: {save_path}")
+                if oss_url:
+                    write_log(f"      ☁️  OSS: {oss_url}")
             except Exception as e:
-                print(f"❌ Failed to download {f['name']}: {e}")
+                write_log(f"   ❌ Failed to download {f['name']}: {e}")
 
-        print(f"\n✅ All done! Files saved to: {os.path.abspath(args.output_dir)}")
+        write_log(f"\n✅ All done!")
+        if actual_session_id:
+            write_log(f"💡 To continue this conversation, use: --session {actual_session_id}")
     else:
-        print("\n⚠️  No output files generated.")
+        write_log("\n⚠️  No output files generated.")
+        if actual_session_id:
+            write_log(f"💡 To continue this conversation, use: --session {actual_session_id}")
 
 
 if __name__ == "__main__":

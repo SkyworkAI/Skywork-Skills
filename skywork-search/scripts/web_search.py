@@ -27,7 +27,8 @@ def search(query: str) -> str:
     """Call web_search API and return formatted text of results."""
     url = f"{SKYWORK_GATEWAY_URL}/web_search"
     token = get_skywork_token()
-    body = json.dumps({"query": query}).encode("utf-8")
+    payload = {"query": query, "source_platform": "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""}
+    body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         url,
         data=body,
