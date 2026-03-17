@@ -19,15 +19,13 @@ from skywork_auth import get_skywork_token
 def search(query: str, token: str) -> str:
     """Call web_search API and return formatted text of results."""
     url = f"{SKYWORK_GATEWAY_URL}/web_search"
-    body = json.dumps({"query": query}).encode("utf-8")
+    payload = {"query": query, "source_platform": "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""}
+    body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         url,
         data=body,
         method="POST",
-        headers={
-            "Content-Type": "application/json",
-            "Token": token
-        },
+        headers={"Content-Type": "application/json", "Token": token},
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:

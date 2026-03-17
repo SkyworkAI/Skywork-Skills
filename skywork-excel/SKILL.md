@@ -4,20 +4,126 @@ description: "STRONGLY RECOMMENDED for ANY task involving Excel, data analysis, 
 ---
 
 # Excel Generator
+## ⚠️ Multi-Turn Session Rule (CRITICAL)
 
-## ⚠️ IMPORTANT: Exec Tool Configuration
+**When the user's request is a continuation of a previous Excel task, you MUST use the `--session` parameter.**
 
-When calling the `exec` tool to run Python scripts for this skill, use `timeout: 1500` to allow sufficient time for complex Excel tasks:
+**How to detect a continuation task:**
+- User says: "continue", "modify", "optimize", "adjust", "based on the previous...", "improve the last one..."
+- User references previous output: "that report", "the previous Excel", "the analysis above"
+- User asks for changes to existing work: "add a chart", "change to purple", "add a column"
 
-```json
-{
-  "tool": "exec",
-  "command": "python scripts/excel_api_client.py ...",
-  "timeout": 1500
-}
+**How to use session_id:**
+1. Look for the previous task's output: `💡 To continue this conversation, use: --session xxx`
+2. Add `--session xxx` to the command:
+```bash
+python3 scripts/excel_api_client.py "user's follow-up request" \
+  --session abc123def456 \
+  --language zh-CN \
+  --log-path "$EXCEL_LOG" \
+  > /dev/null 2>&1 &
 ```
 
-- **`timeout: 1500`** — Excel tasks can take 5-25 minutes for complex operations (PDF parsing, web search, chart generation)
+**⛔ If you don't pass `--session`, the agent will start fresh and lose all previous context!**
+
+---
+
+
+## 🚫 CRITICAL: DO NOT READ USER FILES
+
+**NEVER use the `read` tool on user-provided files (Excel, PDF, CSV, images, etc.).**
+
+The backend agent will read and process files itself. You only need to:
+1. **Upload files** using the CLI script `--files` parameter
+2. **Pass the user's query** directly without modification
+
+Reading files wastes time and causes timeouts. Just upload and let the backend handle everything.
+
+---
+
+## ⚠️ IMPORTANT: Background Execution with Progress Monitoring
+
+Excel tasks take 5-25 minutes. **You MUST run the script in background and poll the log every 5 seconds** to keep the UI responsive and avoid timeouts.
+
+### Step 1: Start script in background
+
+```bash
+EXCEL_LOG=/tmp/excel_$(date +%s).log
+
+python3 scripts/excel_api_client.py "user query" \
+  --files "/path/to/file1.xlsx" "/path/to/file2.pdf" \
+  --language zh-CN \
+  --log-path "$EXCEL_LOG" \
+  > /dev/null 2>&1 &
+
+echo "Log: $EXCEL_LOG"
+```
+
+### Step 2: Monitor progress (REQUIRED)
+
+> **STRICT RULES — no exceptions:**
+> 1. **Poll every 60 seconds by calling exec tool repeatedly.** Excel tasks take 10-25 minutes.
+> 2. **Only show the LAST TASK PROGRESS UPDATE.** Do NOT output full log or summarize it.
+> 3. **NEVER restart the task.** The Excel agent handles errors internally and will auto-recover.
+> 4. **Ignore all errors in the log** (e.g., `❌`, `Missing parameter`, `jupyter_execute` errors). These are normal — the agent will retry automatically.
+
+**Every 60 seconds, run this exact sequence (call exec tool each time, do NOT use while loop):**
+```bash
+# Step 1: Wait 60 seconds
+sleep 60
+# Step 2: Check progress
+echo "=== Progress Update ==="
+grep -A8 "TASK PROGRESS UPDATE" "$EXCEL_LOG" | tail -10
+# Step 3: Check if done
+grep -E "\[DONE\]|All done" "$EXCEL_LOG" | tail -1
+```
+
+- If log contains `[DONE]` or `✅ All done!` → **stop polling**, read final output with `tail -30 "$EXCEL_LOG"`, then deliver results.
+- If NOT done → **report progress to user**, then **call exec tool again** with the same command after 60 seconds.
+- **Repeat until done** — you must keep calling exec tool every 60 seconds until you see `[DONE]` or `All done`.
+
+### Rules
+
+- **Call exec tool repeatedly** — do NOT use a while loop (it blocks output). Call exec every 60 seconds yourself.
+- **NEVER restart the task** even if you see errors. The agent handles errors internally.
+- **Do NOT summarize or interpret the log** — just show the raw TASK PROGRESS UPDATE block.
+
+### What to report to user
+
+> **CRITICAL: Output ONLY the current status. Do NOT repeat or accumulate previous status messages. Each update should be a single, fresh line.**
+
+**After each log read, output ONLY ONE LINE showing the current status:**
+```
+[Main stage] | [current action] | Elapsed: Xs
+```
+**Example (output only this single line, nothing else):**
+```
+Data Processing | Generating charts | Elapsed: 120s
+```
+
+**Map TASK PROGRESS UPDATE to main stages:**
+
+| Progress contains | Main stage |
+|------------------|------------|
+| "读取" / "read" / "load" | Loading data |
+| "分析" / "analysis" | Data analysis |
+| "图表" / "chart" / "visualization" | Generating charts |
+| "Excel" / "xlsx" | Creating Excel file |
+| "HTML" / "报告" / "report" | Generating report |
+| "保存" / "save" / "output" | Saving output |
+
+**Example status updates:**
+```
+Loading data | Reading Excel files | Elapsed: 30s
+Data analysis | Processing stock data | Elapsed: 90s
+Generating report | Creating HTML analysis | Elapsed: 180s
+```
+
+**Do NOT:**
+- Output `tail -50` or full log content
+- Mention errors or heartbeat messages
+- Restart the task for any reason
+- **Repeat or accumulate previous status messages** — each update must be fresh, not appended to previous ones
 
 A professional skill for generating and updating high-quality Excel files using a sophisticated backend service with AI-powered data analysis, charting, formula validation, and report generation capabilities.
 
@@ -158,6 +264,12 @@ client = ExcelAgentClient()  # Auto-login
 for f in output_files:
     client.download_file(f["file_id"], f"./{f['name']}")
 ```
+
+**CLI output includes both paths** — when using the command-line script, it automatically outputs:
+- `📁 Local:` — the absolute local file path where the file was downloaded
+- `☁️ OSS:` — the cloud download URL for sharing
+
+**When summarizing results to the user**, always include BOTH the local file path AND the OSS download link from the script output.
 
 ## Important Implementation Notes
 

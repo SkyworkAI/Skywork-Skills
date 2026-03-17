@@ -189,6 +189,7 @@ def main():
     print(f"{mode} image (resolution={args.resolution}, aspect_ratio={args.aspect_ratio or 'auto'})...")
     print("This may take 30-120 seconds. Please wait...")
 
+    body["source_platform"] = "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""
     result = call_sse(url, body)
 
     if not result:

@@ -75,9 +75,10 @@ def create_doc(base_url, token, title, content, input_files=None, language=None,
 
     if language:
         payload["options"] = {"language": language}
+    payload["source_platform"] = "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""
 
     body = json.dumps(payload).encode("utf-8")
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "request_id": request_id}
     if token:
         headers["token"] = token
 
