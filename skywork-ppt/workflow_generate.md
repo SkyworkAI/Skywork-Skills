@@ -172,8 +172,8 @@ Each line is plain text:
 
 **After each read, report status to the user:**
 ```
-[Main stage] | [current action] | Elapsed: Xs
-Example: Generating slides | Working on page 3 | Elapsed: 42s
+[Main stage] | [current action]
+Example: Generating slides | Working on page 3 
 ```
 
 Map phase messages to main stages:

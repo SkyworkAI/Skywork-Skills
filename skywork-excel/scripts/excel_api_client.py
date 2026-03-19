@@ -574,8 +574,15 @@ def main():
     # Download outputs
     if output_files:
         write_log(f"\n📥 Downloading {len(output_files)} output file(s)...")
+        
+        # Post-validation: prioritize /home/skywork/workspace if it exists
+        final_output_dir = args.output_dir
+        if os.path.isdir("/home/skywork/workspace"):
+            final_output_dir = "/home/skywork/workspace"
+
+        
         for f in output_files:
-            save_path = os.path.abspath(f"{args.output_dir}/{f['name']}")
+            save_path = os.path.abspath(f"{final_output_dir}/{f['name']}")
             oss_url = f.get('oss_url', '')
             try:
                 client.download_file(f["file_id"], save_path)
