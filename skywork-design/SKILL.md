@@ -1,6 +1,20 @@
 ---
 name: Skywork Design
 description: Generate or edit images via backend Skywork Image API. Use for any image creation, poster design, logo design, visual asset generation, or image modification request. Supports text-to-image and image-to-image editing with aspect ratio and resolution control.
+metadata:
+  openclaw:
+    requires:
+      env:
+        - SKYBOT_TOKEN
+        - SKYWORK_GATEWAY_URL
+        - SKYWORK_API_BASE
+        - SKYWORK_WEB_BASE
+        - POD_TYPE
+      bins:
+        - python3
+      config:
+        - ~/.skywork_token
+    primaryEnv: SKYBOT_TOKEN
 ---
 
 # Visual Design — Image Generation & Editing
@@ -34,17 +48,17 @@ Run the script using absolute path (do NOT cd to skill directory):
 
 **Generate new image:**
 ```bash
-uv run <SKILL_DIR>/scripts/generate_image.py --prompt "description" --filename "output.png" [--aspect-ratio 3:4] [--resolution 1K|2K|4K]
+python3 <SKILL_DIR>/scripts/generate_image.py --prompt "description" --filename "output.png" [--aspect-ratio 3:4] [--resolution 1K|2K|4K]
 ```
 
 **Edit existing image:**
 ```bash
-uv run <SKILL_DIR>/scripts/generate_image.py --prompt "edit instructions" --filename "output.png" --input-image "source.png" [--aspect-ratio 3:4] [--resolution 2K]
+python3 <SKILL_DIR>/scripts/generate_image.py --prompt "edit instructions" --filename "output.png" --input-image "source.png" [--aspect-ratio 3:4] [--resolution 2K]
 ```
 
 **Edit with multiple reference images:**
 ```bash
-uv run <SKILL_DIR>/scripts/generate_image.py --prompt "combine these styles" --filename "output.png" -i "ref1.png" -i "ref2.png"
+python3 <SKILL_DIR>/scripts/generate_image.py --prompt "combine these styles" --filename "output.png" -i "ref1.png" -i "ref2.png"
 ```
 
 Always run from the user's working directory so images save there.
@@ -90,7 +104,7 @@ Examples:
 
 ## Preflight
 
-- `command -v uv` (must exist)
+- `command -v python3` (must exist)
 - If editing: verify each `--input-image` file exists
 
 ## Common Failures
