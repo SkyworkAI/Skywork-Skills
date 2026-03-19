@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.10"
-# dependencies = [
-#     "requests>=2.28.0",
-# ]
-# ///
 """
 Generate or edit images via backend image API.
 
 Usage:
-    uv run generate_image.py --prompt "description" --filename "out.png"
-    uv run generate_image.py --prompt "edit instructions" --filename "out.png" --input-image "ref.png"
-    uv run generate_image.py --prompt "combine styles" --filename "out.png" -i "ref1.png" -i "ref2.png"
+    python3 generate_image.py --prompt "description" --filename "out.png"
+    python3 generate_image.py --prompt "edit instructions" --filename "out.png" --input-image "ref.png"
+    python3 generate_image.py --prompt "combine styles" --filename "out.png" -i "ref1.png" -i "ref2.png"
 """
 
 import argparse

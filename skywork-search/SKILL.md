@@ -1,6 +1,20 @@
 ---
 name: Skywork Search
 description: Search the web for real-time information using the Skywork web search API. Use this skill whenever the user needs up-to-date information from the internet — for example, researching a topic, looking up recent events, finding facts or statistics, gathering material for a document or presentation, or answering questions that require current data. Also trigger when the user says things like "search for", "look up", "find information about", "what's the latest on", or any request that implies needing information beyond your training data.
+metadata:
+  openclaw:
+    requires:
+      env:
+        - SKYBOT_TOKEN
+        - SKYWORK_GATEWAY_URL
+        - SKYWORK_API_BASE
+        - SKYWORK_WEB_BASE
+        - POD_TYPE
+      bins:
+        - python3
+      config:
+        - ~/.skywork_token
+    primaryEnv: SKYBOT_TOKEN
 ---
 
 # Web Search Skill
