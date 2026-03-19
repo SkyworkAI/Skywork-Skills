@@ -156,7 +156,8 @@ Each line is plain text:
 
 **After each read, report status to the user:**
 ```
-[Main stage] | [current action] | Elapsed: Xs
+[Main stage] | [current action] 
+Example: Generating slides | Working on page 3 
 ```
 
 **Stop polling** as soon as you see `[DONE]` or `[ERROR]`.
