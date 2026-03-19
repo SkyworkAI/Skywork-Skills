@@ -4,17 +4,8 @@ description: Generate or edit images via backend Skywork Image API. Use for any 
 metadata:
   openclaw:
     requires:
-      env:
-        - SKYBOT_TOKEN
-        - SKYWORK_GATEWAY_URL
-        - SKYWORK_API_BASE
-        - SKYWORK_WEB_BASE
-        - POD_TYPE
       bins:
         - python3
-      config:
-        - ~/.skywork_token
-    primaryEnv: SKYBOT_TOKEN
 ---
 
 # Visual Design — Image Generation & Editing

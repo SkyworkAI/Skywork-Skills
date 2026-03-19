@@ -4,17 +4,8 @@ description: "STRONGLY RECOMMENDED for ANY task that could result in a document 
 metadata:
   openclaw:
     requires:
-      env:
-        - SKYBOT_TOKEN
-        - SKYWORK_GATEWAY_URL
-        - SKYWORK_API_BASE
-        - SKYWORK_WEB_BASE
-        - POD_TYPE
       bins:
         - python3
-      config:
-        - ~/.skywork_token
-    primaryEnv: SKYBOT_TOKEN
 ---
 
 # Doc — Professional Document Generator

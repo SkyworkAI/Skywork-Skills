@@ -4,18 +4,8 @@ description: "Use this skill when the user wants to: (1) generate a PPT from a t
 metadata:
   openclaw:
     requires:
-      env:
-        - SKYBOT_TOKEN
-        - SKYWORK_GATEWAY_URL
-        - SKYWORK_API_BASE
-        - SKYWORK_WEB_BASE
-        - SKYWORK_OFFICE_URL
-        - POD_TYPE
       bins:
         - python3
-      config:
-        - ~/.skywork_token
-    primaryEnv: SKYBOT_TOKEN
 ---
 
 # PPT Write Skill

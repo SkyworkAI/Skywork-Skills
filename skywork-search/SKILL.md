@@ -4,17 +4,8 @@ description: Search the web for real-time information using the Skywork web sear
 metadata:
   openclaw:
     requires:
-      env:
-        - SKYBOT_TOKEN
-        - SKYWORK_GATEWAY_URL
-        - SKYWORK_API_BASE
-        - SKYWORK_WEB_BASE
-        - POD_TYPE
       bins:
         - python3
-      config:
-        - ~/.skywork_token
-    primaryEnv: SKYBOT_TOKEN
 ---
 
 # Web Search Skill
