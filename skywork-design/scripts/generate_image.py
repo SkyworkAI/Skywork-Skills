@@ -17,8 +17,8 @@ import sys
 import urllib.request
 import urllib.error
 from pathlib import Path
+from constant import SKYWORK_GATEWAY_URL, POD_TYPE
 
-SKYWORK_GATEWAY_URL = os.environ.get("SKYWORK_GATEWAY_URL", "https://api-tools.skywork.ai/theme-gateway").rstrip("/")
 
 VALID_ASPECT_RATIOS = [
     "1:1", "2:3", "3:2", "3:4", "4:3",
@@ -73,16 +73,24 @@ def parse_sse_stream(resp):
         yield cur_event, data
 
 
-from skywork_auth import get_skywork_token
+from skywork_auth import get_skywork_api_key
 
 
 def call_sse(url: str, body: dict) -> dict | None:
     """POST to an SSE endpoint. Print progress, return success payload or exit on error."""
-    token = get_skywork_token()
+    skywork_api_key = get_skywork_api_key()
+    if not skywork_api_key:
+        print("[error] SKYWORK_API_KEY is required", file=sys.stderr)
+        sys.exit(1)
     payload = json.dumps(body).encode("utf-8")
+    headers={
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+        "Authorization": f"Bearer {skywork_api_key}",
+    }
     req = urllib.request.Request(
         url, data=payload, method="POST",
-        headers={"Content-Type": "application/json", "Accept": "text/event-stream", "token": token},
+        headers=headers,
     )
 
     success_data = None
@@ -183,7 +191,7 @@ def main():
     print(f"{mode} image (resolution={args.resolution}, aspect_ratio={args.aspect_ratio or 'auto'})...")
     print("This may take 30-120 seconds. Please wait...")
 
-    body["source_platform"] = "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""
+    body["source_platform"] = "skyclaw" if POD_TYPE == "skyclaw" else ""
     result = call_sse(url, body)
 
     if not result:

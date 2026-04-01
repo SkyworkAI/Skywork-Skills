@@ -17,9 +17,9 @@ import urllib.request
 import urllib.error
 import uuid
 
-from config import SKYWORK_GATEWAY_URL
+from constant import SKYWORK_GATEWAY_URL, POD_TYPE
 
-from skywork_auth import get_skywork_token
+from skywork_auth import get_skywork_api_key
 
 def get_base_url() -> str:
     return SKYWORK_GATEWAY_URL
@@ -279,7 +279,7 @@ def main():
         except json.JSONDecodeError as e:
             print(f"--files JSON parse error: {e}", file=sys.stderr)
             sys.exit(1)
-    payload["source_platform"] = "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""
+    payload["source_platform"] = "skyclaw" if POD_TYPE == "skyclaw" else ""
     body = json.dumps(payload).encode("utf-8")
     headers = {
         "Content-Type": "application/json",
@@ -287,11 +287,11 @@ def main():
         "Session-Id": session_id,
         "Language": args.language,
     }
-    token = get_skywork_token()
-    if not token:
-        print("[error] Failed to get token", file=sys.stderr)
+    api_key = get_skywork_api_key()
+    if not api_key:
+        print("[error] SKYWORK_API_KEY is required", file=sys.stderr)
         sys.exit(1)
-    headers["Token"] = token
+    headers["Authorization"] = f"Bearer {api_key}"
 
     req = urllib.request.Request(
         url,

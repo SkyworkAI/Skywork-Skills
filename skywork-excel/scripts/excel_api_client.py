@@ -12,14 +12,14 @@ Usage:
     client = ExcelAgentClient()
 
     # Or with environment variable
-    # export SKYBOT_TOKEN="your-token"
+    # export SKYWORK_API_KEY="your-api-key"
     # client = ExcelAgentClient()
 
-    # Or with explicit token
-    # client = ExcelAgentClient(token="your-token")
+    # Or with explicit api key
+    # client = ExcelAgentClient(api_key="your-api-key")
 
     if not client.health_check():
-        raise RuntimeError("Service not available or token invalid")
+        raise RuntimeError("Service not available or api key invalid")
 
     file_ids = [client.upload_file("data.xlsx")]
     outputs = client.run_agent("Create a summary report", file_ids=file_ids)
@@ -39,7 +39,8 @@ import urllib.request
 import uuid
 from typing import Optional
 
-from skywork_auth import get_skywork_token as _auth_get_token
+from constant import POD_TYPE, SKYWORK_GATEWAY_URL
+from skywork_auth import get_skywork_api_key
 
 
 # ---------------------------------------------------------------------------
@@ -101,18 +102,15 @@ class HeartbeatThread(threading.Thread):
     def stop(self):
         self._stop_event.set()
 
-SKYWORK_GATEWAY_URL = os.environ.get("SKYWORK_GATEWAY_URL", "https://api-tools.skywork.ai/theme-gateway").rstrip("/")
-
-
-def _get_token_auto() -> str:
+def _get_api_key_auto() -> str:
     """
-    Get Skywork token via auth module.
+    Get Skywork api key via auth module.
 
     Returns:
-        str: Valid token, or empty string on failure
+        str: Valid api key, or empty string on failure
     """
     try:
-        return _auth_get_token()
+        return get_skywork_api_key()
     except Exception:
         return ""
 
@@ -123,7 +121,7 @@ class ExcelAgentClient:
     def __init__(
         self,
         base_url: str = SKYWORK_GATEWAY_URL,
-        token: str = None,
+        api_key: str = None,
         timeout: int = 900
     ):
         """
@@ -131,24 +129,25 @@ class ExcelAgentClient:
 
         Args:
             base_url: Backend service URL (default: test environment)
-            token: User authentication token. If not provided, will try:
-                   1. Environment variable SKYBOT_TOKEN
-                   2. Global token file ~/.skywork_token
+            api_key: User authentication api key. If not provided, will try:
+                   1. Environment variable SKYWORK_API_KEY
             timeout: Request timeout in seconds (default: 900, suitable for complex tasks)
         """
         self.base_url = base_url.rstrip("/")
         
-        # Get token: explicit > env var > auto-login
-        if token is not None:
-            self.token = token
+        # Get api key: explicit > env var
+        if api_key is not None:
+            self.api_key = api_key
         else:
-            self.token = _get_token_auto()
-        
-        self.timeout = timeout
-        self._headers = {"token": self.token} if self.token else {}
-        self._source_platform = "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""
+            self.api_key = _get_api_key_auto()
 
-        # Note: Token logging removed to avoid OpenClaw treating stderr as error
+        self.timeout = timeout
+        if not self.api_key:
+            raise ValueError("SKYWORK_API_KEY is required (set env or pass api_key=)")
+        self._headers = {"Authorization": f"Bearer {self.api_key}"}
+        self._source_platform = "skyclaw" if POD_TYPE == "skyclaw" else ""
+
+        # Note: Api key logging removed to avoid OpenClaw treating stderr as error
 
     def _build_request(
         self,
@@ -194,7 +193,7 @@ class ExcelAgentClient:
                     last_error = f"Service not ready: {data}"
             except urllib.error.HTTPError as e:
                 if e.code == 401:
-                    print("❌ Authentication failed: invalid or expired token", file=sys.stderr)
+                    print("❌ Authentication failed: invalid or expired api key", file=sys.stderr)
                     return False  # Don't retry auth failures
                 elif e.code == 503:
                     # No backend available - ECI pool issue, worth retrying
@@ -507,7 +506,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="Excel Agent CLI")
     parser.add_argument("message", help="Task description for the agent")
-    parser.add_argument("--token", default=None, help="User authentication token (auto-login if not provided)")
+    parser.add_argument("--api-key", default=None, help="User authentication api key")
     parser.add_argument("--files", nargs="*", help="Files to upload")
     parser.add_argument("--session", help="Session ID for multi-turn (use same value across calls)")
     parser.add_argument("--new-session", action="store_true",
@@ -524,14 +523,14 @@ def main():
 
     args = parser.parse_args()
 
-    client = ExcelAgentClient(base_url=args.base_url, token=args.token, timeout=args.timeout)
+    client = ExcelAgentClient(base_url=args.base_url, api_key=args.api_key, timeout=args.timeout)
 
     # Health check
     print("Checking service health...")
     if not client.health_check():
-        print("\n❌ Backend service is not available or token is invalid.")
+        print("\n❌ Backend service is not available or api key is invalid.")
         print("\nPlease check:")
-        print("  1. Your token is valid and not expired")
+        print("  1. Your api key is valid")
         print("  2. The service URL is correct")
         sys.exit(1)
 

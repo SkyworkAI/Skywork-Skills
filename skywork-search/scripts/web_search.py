@@ -18,25 +18,28 @@ import urllib.request
 
 # Add scripts directory to path for skywork_auth import
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from skywork_auth import get_skywork_token
-
-SKYWORK_GATEWAY_URL = os.environ.get("SKYWORK_GATEWAY_URL", "https://api-tools.skywork.ai/theme-gateway").rstrip("/")
+from constant import POD_TYPE, SKYWORK_GATEWAY_URL
+from skywork_auth import get_skywork_api_key
 
 
 def search(query: str) -> str:
     """Call web_search API and return formatted text of results."""
     url = f"{SKYWORK_GATEWAY_URL}/web_search"
-    token = get_skywork_token()
-    payload = {"query": query, "source_platform": "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""}
+    api_key = get_skywork_api_key()
+    if not api_key:
+        print("[error] SKYWORK_API_KEY is required", file=sys.stderr)
+        sys.exit(1)
+    payload = {"query": query, "source_platform": "skyclaw" if POD_TYPE == "skyclaw" else ""}
     body = json.dumps(payload).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
     req = urllib.request.Request(
         url,
         data=body,
         method="POST",
-        headers={
-            "Content-Type": "application/json",
-            "token": token,
-        },
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:

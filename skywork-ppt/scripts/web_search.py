@@ -13,19 +13,22 @@ import sys
 import tempfile
 import urllib.request
 
-from config import SKYWORK_GATEWAY_URL
-from skywork_auth import get_skywork_token
+from constant import SKYWORK_GATEWAY_URL, POD_TYPE
+from skywork_auth import get_skywork_api_key
 
-def search(query: str, token: str) -> str:
+def search(query: str, api_key: str) -> str:
     """Call web_search API and return formatted text of results."""
     url = f"{SKYWORK_GATEWAY_URL}/web_search"
-    payload = {"query": query, "source_platform": "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""}
+    payload = {"query": query, "source_platform": "skyclaw" if POD_TYPE == "skyclaw" else ""}
     body = json.dumps(payload).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     req = urllib.request.Request(
         url,
         data=body,
         method="POST",
-        headers={"Content-Type": "application/json", "Token": token},
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -59,14 +62,14 @@ def main():
     queries = args.queries[:3]
     out_dir = tempfile.mkdtemp(prefix="web_search_")
 
-    token = get_skywork_token()
-    if not token:
-        print("[error] Failed to get token", file=sys.stderr)
+    api_key = get_skywork_api_key()
+    if not api_key:
+        print("[error] SKYWORK_API_KEY is required", file=sys.stderr)
         sys.exit(1)
 
     for i, q in enumerate(queries, 1):
         print(f"[query] {q} ...", file=sys.stderr, flush=True)
-        raw = search(q, token)
+        raw = search(q, api_key)
         out_path = os.path.join(out_dir, f"{q}_result.txt")
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(f"query: {q}\n\n{raw}")

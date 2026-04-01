@@ -16,7 +16,7 @@ Usage:
 
 Environment variables:
     SKYWORK_GATEWAY_URL - Base URL
-    SKYBOT_TOKEN       - Auth token (takes priority)
+    SKYWORK_API_KEY      - Auth (sent as Authorization: Bearer)
 """
 
 import argparse
@@ -28,7 +28,8 @@ from urllib.parse import urlparse, quote
 from urllib.request import Request, urlopen, urlretrieve
 from urllib.error import URLError, HTTPError
 
-from skywork_auth import get_skywork_token
+from constant import POD_TYPE, SKYWORK_GATEWAY_URL
+from skywork_auth import get_skywork_api_key
 
 
 def parse_sse_events(response):
@@ -57,7 +58,7 @@ def parse_sse_events(response):
                     pass
 
 
-def create_doc(base_url, token, title, content, input_files=None, language=None, fmt="html"):
+def create_doc(base_url, api_key, title, content, input_files=None, language=None, fmt="html"):
     """Call the doc create SSE endpoint and stream progress."""
     url = f"{base_url}/api/sse/doc/create"
     request_id = str(uuid.uuid4())
@@ -75,12 +76,12 @@ def create_doc(base_url, token, title, content, input_files=None, language=None,
 
     if language:
         payload["options"] = {"language": language}
-    payload["source_platform"] = "skyclaw" if os.environ.get("POD_TYPE", "") == "skyclaw" else ""
+    payload["source_platform"] = "skyclaw" if POD_TYPE == "skyclaw" else ""
 
     body = json.dumps(payload).encode("utf-8")
     headers = {"Content-Type": "application/json", "request_id": request_id}
-    if token:
-        headers["token"] = token
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
 
     req = Request(url, data=body, headers=headers, method="POST")
 
@@ -188,10 +189,12 @@ def main():
     )
     args = parser.parse_args()
 
-    base_url = os.environ.get("SKYWORK_GATEWAY_URL", "https://api-tools.skywork.ai/theme-gateway").rstrip("/")
+    base_url = SKYWORK_GATEWAY_URL
 
-    # Get token
-    token = get_skywork_token()
+    api_key = get_skywork_api_key()
+    if not api_key:
+        print("[error] SKYWORK_API_KEY is required", file=sys.stderr)
+        sys.exit(1)
 
     # Parse input_files if provided
     input_files = None
@@ -207,7 +210,7 @@ def main():
 
     result = create_doc(
         base_url=base_url,
-        token=token,
+        api_key=api_key,
         title=args.title,
         content=args.content,
         input_files=input_files,

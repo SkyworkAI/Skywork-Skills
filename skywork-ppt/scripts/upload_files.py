@@ -16,10 +16,12 @@ import urllib.request
 import urllib.error
 import uuid
 
+from pptx import api
+
 
 from config import SKYWORK_GATEWAY_URL
 
-from skywork_auth import get_skywork_token
+from skywork_auth import get_skywork_api_key
 
 
 def build_multipart(fields: dict, files: dict) -> tuple[bytes, str]:
@@ -57,7 +59,7 @@ def build_multipart(fields: dict, files: dict) -> tuple[bytes, str]:
     return body, content_type
 
 
-def upload_file(local_path: str, oss_prefix: str | None, base_url: str, token: str = None) -> str:
+def upload_file(local_path: str, oss_prefix: str | None, base_url: str, api_key: str = None) -> str:
     """Upload a single local file and return the OSS URL. Raises an exception on failure."""
     if not os.path.isfile(local_path):
         raise FileNotFoundError(f"File not found: {local_path}")
@@ -78,14 +80,16 @@ def upload_file(local_path: str, oss_prefix: str | None, base_url: str, token: s
     )
 
     url = base_url.rstrip("/") + "/upload_oss"
+    headers = {
+        "Content-Type": content_type,
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     req = urllib.request.Request(
         url,
         data=body,
         method="POST",
-        headers= {
-            "Content-Type": content_type, 
-            "Token": token
-        },
+        headers=headers,
     )
 
     with urllib.request.urlopen(req, timeout=60) as resp:
@@ -99,7 +103,7 @@ def upload_file(local_path: str, oss_prefix: str | None, base_url: str, token: s
     return result["url"]
 
 
-def upload_files(local_paths: list[str], oss_prefix: str | None = None, base_url: str = SKYWORK_GATEWAY_URL, token: str = None) -> list[dict]:
+def upload_files(local_paths: list[str], oss_prefix: str | None = None, base_url: str = SKYWORK_GATEWAY_URL, api_key: str = None) -> list[dict]:
     """Upload a batch of local files and return a list of results for each file.
 
     Return format:
@@ -109,7 +113,7 @@ def upload_files(local_paths: list[str], oss_prefix: str | None = None, base_url
     results = []
     for path in local_paths:
         try:
-            url = upload_file(path, oss_prefix, base_url, token)
+            url = upload_file(path, oss_prefix, base_url, api_key)
             filename = os.path.basename(path)
             print(f"[OK] {path} -> {url}", flush=True)
             results.append({"path": path, "filename": filename, "url": url, "ok": True})
@@ -128,12 +132,12 @@ def main():
     parser.add_argument("files", nargs="+", help="List of local file paths")
     args = parser.parse_args()
 
-    token = get_skywork_token()
-    if not token:
-        print("[error] Failed to get token", file=sys.stderr)
+    api_key = get_skywork_api_key()
+    if not api_key:
+        print("[error] SKYWORK_API_KEY is required", file=sys.stderr)
         sys.exit(1)
 
-    results = upload_files(args.files, oss_prefix='', token=token)
+    results = upload_files(args.files, oss_prefix='', api_key=api_key)
 
     failed = [r for r in results if not r["ok"]]
     if failed:
