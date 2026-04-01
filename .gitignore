@@ -53,6 +53,7 @@ output/
 *.xlsx
 temp/
 *.tmp
+release_build/
 
 # Testing
 .pytest_cache/

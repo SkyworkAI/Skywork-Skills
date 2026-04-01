@@ -1,11 +1,19 @@
 ---
 name: Skywork-ppt
-description: "Use this skill when the user wants to: (1) generate a PPT from a topic — trigger on '/ppt_write', 'generate a PPT', 'create a presentation about X', 'help me generate a PPT'; OR (2) use an existing .pptx as a style template to generate a new presentation on a different topic — trigger on 'use this template', 'imitate this PPT', 'imitate this style'; OR (3) perform local operations on an existing .pptx file without backend — trigger on 'delete slide N', 'reorder slides', 'rearrange PPT', 'merge pptx', 'extract slides', 'pptx info', 'view PPT slide count'; OR (4) edit/modify an existing PPT via natural language — trigger on ANY request that references an existing PPT file or slide and asks for a change, including: 'modify slide N', 'change the background', 'add a slide', 'change the style', 'split slide', 'merge slides', 'edit this PPT', 'update this presentation', 'make it more beautiful', 'improve the layout', 'optimize the structure', 'make it look better', 'redesign page N', 'adjust the style'. This skill is built based on Nano Banana 2 to deliver high-quality presentation generation and editing capabilities. IMPORTANT: This skill requires Python 3 (>=3.8). Before running any script, ALWAYS run the mandatory environment check step first to locate the Python binary and install dependencies."
+description: |
+  Use this skill when the user wants to work with PowerPoint presentations. Triggers include:
+  - Generating a new PPT from a topic: 'generate a PPT' / '帮我做个PPT' / 'PPTを作って' / 'PPT 만들어줘', 'create a presentation about X' / '生成关于X的演示文稿' / 'Xについてのプレゼンを作って' / 'X에 대한 발표 자료 만들어줘', 'help me make slides' / '帮我做幻灯片' / 'スライドを作って' / '슬라이드 만들어줘'
+  - Imitating an existing .pptx style/template: 'use this template' / '用这个模板' / 'このテンプレートを使って' / '이 템플릿을 써줘', 'imitate this PPT' / '仿照这个PPT' / 'このPPTを真似して' / '이 PPT를 따라 해줘', 'imitate this style' / '仿照这个风格' / 'このスタイルを真似して' / '이 스타일을 따라 해줘'
+  - Editing an existing PPT via natural language: 'modify slide N' / '修改第N页' / 'N枚目のスライドを修正して' / 'N번 슬라이드 수정해줘', 'change the background' / '更换背景' / '背景を変えて' / '배경 바꿔줘', 'add a slide' / '新增一页幻灯片' / 'スライドを追加して' / '슬라이드 추가해줘', 'make it more beautiful' / '美化一下PPT' / 'もっときれいにして' / '더 예쁘게 다듬어줘', 'edit this PPT' / '改一下这个PPT' / 'このPPTを編集して' / '이 PPT 수정해줘'
+  - Local file operations on .pptx (no backend): 'delete slide N' / '删除第N页' / 'N枚目のスライドを削除して' / 'N번 슬라이드 삭제해줘', 'reorder slides' / '调整幻灯片顺序' / 'スライドを並べ替えて' / '슬라이드 순서 바꿔줘', 'merge pptx' / '合并PPT' / 'pptxを結合して' / 'pptx 합쳐줘', 'extract slides' / '提取幻灯片' / 'スライドを抽出して' / '슬라이드 추출해줘', 'how many slides' / '有多少页幻灯片' / 'スライドは何枚ある' / '슬라이드 몇 장이야'
 metadata:
   openclaw:
     requires:
       bins:
         - python3
+      env:
+        - SKYWORK_API_KEY
+    primaryEnv: SKYWORK_API_KEY
 ---
 
 # PPT Write Skill
@@ -14,21 +22,16 @@ Four capabilities: **generate**, **template imitation**, **edit existing PPT**, 
 
 ---
 
-## Authentication (Required First)
+## Prerequisites
 
-Before using this skill, authentication must be completed. Run the auth script first:
+### API Key Configuration (Required First)
+This skill requires a **SKYWORK_API_KEY** to be configured in OpenClaw.
 
-```bash
-# Authenticate: checks env token / cached token / browser login
-python3 <skill-dir>/scripts/skywork_auth.py || exit 1
-```
+If you don't have an API key yet, please visit:
+**https://skywork.ai**
 
-**Token priority**:
-1. Environment variable `SKYBOT_TOKEN` → if set, use directly
-2. Cached token file `~/.skywork_token` → validate via API, if valid, use it
-3. No valid token → opens browser for login, polls until complete, saves token
-
-**IMPORTANT - Login URL handling**: If script output contains a line starting with `[LOGIN_URL]`, you **MUST** immediately send that URL to the user in a clickable message (e.g. "Please open this link to log in: <url>"). The user may be in an environment where the browser cannot open automatically, so always surface the login URL.
+For detailed setup instructions, see:
+[references/apikey-fetch.md](references/apikey-fetch.md)
 
 ---
 
@@ -154,6 +157,8 @@ When you detect the above, **reply in the user's current language** — do not e
 - Convey: "Sorry, PPT generation failed. This skill requires upgrading your Skywork membership to use." then a single call-to-action link.
 - **Format**: One short sentence in the user's language + a link like `[Upgrade now →](url)` or the equivalent in their language .
 - **URL**: Extract the upgrade URL from the log/script output (e.g. the `at https://...` part).
+
+> Note: Only suggest upgrading when the error is **Insufficient benefit**. For auth errors like `NO_TOKEN` / `INVALID_TOKEN` / `401` / “invalid API key”, keep the error code / raw message and guide users to update `SKYWORK_API_KEY`. **Do not** suggest upgrading membership.
 
 ---
 

@@ -6,6 +6,9 @@ metadata:
     requires:
       bins:
         - python3
+      env:
+        - SKYWORK_API_KEY
+    primaryEnv: SKYWORK_API_KEY
 ---
 
 # Visual Design — Image Generation & Editing
@@ -15,23 +18,16 @@ Be patient, it takes about 2 minutes to generate an image each time.
 
 ---
 
-## Authentication (Required First)
+## Prerequisites
 
-Before using this skill, authentication must be completed. Run the auth script first:
+### API Key Configuration (Required First)
+This skill requires a **SKYWORK_API_KEY** to be configured in OpenClaw.
 
-```bash
-# Authenticate: checks env token / cached token / browser login
-python3 <skill-dir>/scripts/skywork_auth.py || exit 1
-```
+If you don't have an API key yet, please visit:
+**https://skywork.ai**
 
-**Token priority**:
-1. Environment variable `SKYBOT_TOKEN` → if set, use directly
-2. Cached token file `~/.skywork_token` → validate via API, if valid, use it
-3. No valid token → opens browser for login, polls until complete, saves token
-
-**IMPORTANT - Login URL handling**: If script output contains a line starting with `[LOGIN_URL]`, you **MUST** immediately send that URL to the user in a clickable message (e.g. "Please open this link to log in: <url>"). The user may be in an environment where the browser cannot open automatically, so always surface the login URL.
-
----
+For detailed setup instructions, see:
+[references/apikey-fetch.md](references/apikey-fetch.md)
 
 ## Usage
 
@@ -112,6 +108,8 @@ When you detect the above, **reply in the user's current language** — do not e
 - Convey: "Sorry, image generation failed. This skill requires upgrading your Skywork membership to use." then a single call-to-action link.
 - **Format**: One short sentence in the user's language + a link like `[Upgrade now →](url)` or the equivalent in their language.
 - **URL**: Extract the upgrade URL from the log/script output (e.g. the `at https://...` part).
+
+> Note: Only suggest upgrading when the error is **Insufficient benefit**. For auth errors like `NO_TOKEN` / `INVALID_TOKEN` / `401` / “invalid API key”, keep the error code / raw message and guide users to update `SKYWORK_API_KEY`. **Do not** suggest upgrading membership.
 
 ## Output
 

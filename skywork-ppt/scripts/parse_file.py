@@ -9,8 +9,8 @@ Usage:
     python parse_file.py /path/to/document.pdf [--output parsed_content.txt]
 
 Environment variables:
-    SKYWORK_OFFICE_URL   - Base URL (default: https://api-tools.skywork.ai/theme-gateway)
-    SKYWORK_OFFICE_TOKEN - Auth token (optional for local dev)
+    SKYWORK_GATEWAY_URL  - Base URL
+    SKYWORK_API_KEY      - Auth api key
 """
 
 import argparse
@@ -23,9 +23,9 @@ import uuid
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
-from config import SKYWORK_OFFICE_URL
 
-from skywork_auth import get_skywork_token
+from constant import SKYWORK_GATEWAY_URL
+from skywork_auth import get_skywork_api_key
 
 
 def build_multipart_body(file_path: str):
@@ -73,7 +73,7 @@ def parse_sse_events(response):
             pass
 
 
-def parse_file(base_url: str, token: str, file_path: str) -> dict:
+def parse_file(base_url: str, api_key: str, file_path: str) -> dict:
     """Upload and parse a file, streaming progress. Returns parsed metadata."""
     url = f"{base_url}/api/sse/file/parse"
     file_name = os.path.basename(file_path)
@@ -86,7 +86,8 @@ def parse_file(base_url: str, token: str, file_path: str) -> dict:
     body, content_type = build_multipart_body(file_path)
     req = Request(url, data=body, method="POST")
     req.add_header("Content-Type", content_type)
-    req.add_header("Token", token)
+    if api_key:
+        req.add_header("Authorization", f"Bearer {api_key}")
 
     try:
         resp = urlopen(req, timeout=300)
@@ -144,10 +145,13 @@ def main():
         print(f"[error] File not found: {args.file}", file=sys.stderr)
         sys.exit(1)
 
-    base_url = SKYWORK_OFFICE_URL
-    token = get_skywork_token()
+    base_url = SKYWORK_GATEWAY_URL
+    api_key = get_skywork_api_key()
+    if not api_key:
+        print("[error] SKYWORK_API_KEY is required", file=sys.stderr)
+        sys.exit(1)
 
-    result = parse_file(base_url, token, args.file)
+    result = parse_file(base_url, api_key, args.file)
 
     if result:
         metadata = result.get("metadata", {})

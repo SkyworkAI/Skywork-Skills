@@ -1,11 +1,14 @@
 ---
 name: Skywork Search
-description: Search the web for real-time information using the Skywork web search API. Use this skill whenever the user needs up-to-date information from the internet — for example, researching a topic, looking up recent events, finding facts or statistics, gathering material for a document or presentation, or answering questions that require current data. Also trigger when the user says things like "search for", "look up", "find information about", "what's the latest on", or any request that implies needing information beyond your training data.
+description: Search the web for real-time information using the Skywork web search API. Use this skill whenever the user needs up-to-date information from the internet — for example, researching a topic, looking up recent events, finding facts or statistics, gathering material for a document or presentation, or answering questions that require current data. Also trigger when the user says things like "search for" / "搜索" / "検索" / "검색", "look up" / "查询" / "調べる" / "조회하다", "find information about" / "查找关于……的信息" / "……に関する情報を探す" / "…에 대한 정보를 찾다", "what's the latest on" / "……最新进展" / "……の最新情報" / "…의 최신 소식", or any request that implies needing information beyond your training data.
 metadata:
   openclaw:
     requires:
       bins:
         - python3
+      env:
+        - SKYWORK_API_KEY
+    primaryEnv: SKYWORK_API_KEY
 ---
 
 # Web Search Skill
@@ -19,21 +22,16 @@ Search the web for real-time information via the Skywork search API. This skill 
 - Another task (writing a report, creating a PPT, drafting a document) needs web research as a preliminary step
 - The user explicitly asks to search or look something up
 
-## Authentication (Required First)
+## Prerequisites
 
-Before using this skill, authentication must be completed. Run the auth script first:
+### API Key Configuration (Required First)
+This skill requires a **SKYWORK_API_KEY** to be configured in OpenClaw.
 
-```bash
-# Authenticate: checks env token / cached token / browser login
-python3 <skill-dir>/scripts/skywork_auth.py || exit 1
-```
+If you don't have an API key yet, please visit:
+**https://skywork.ai**
 
-**Token priority**:
-1. Environment variable `SKYBOT_TOKEN` → if set, use directly
-2. Cached token file `~/.skywork_token` → validate via API, if valid, use it
-3. No valid token → opens browser for login, polls until complete, saves token
-
-**IMPORTANT - Login URL handling**: If script output contains a line starting with `[LOGIN_URL]`, you **MUST** immediately send that URL to the user in a clickable message (e.g. "Please open this link to log in: <url>"). The user may be in an environment where the browser cannot open automatically, so always surface the login URL.
+For detailed setup instructions, see:
+[references/apikey-fetch.md](references/apikey-fetch.md)
 
 ## How to use
 
