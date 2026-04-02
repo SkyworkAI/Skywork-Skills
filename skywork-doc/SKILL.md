@@ -30,6 +30,13 @@ For detailed setup instructions, see:
 
 ---
 
+## Privacy & Remote Calls (Read Before Use)
+
+- **Remote upload & processing**: This skill uploads user-provided files and sends the full, verbatim user request to the Skywork service. Avoid sensitive or confidential content unless you trust the remote service and its data handling policies.
+- **Web search**: Any web search mentioned in this skill is performed by the **server-side** Skywork Doc API, not locally by these scripts.
+
+---
+
 ## Workflow
 
 ### Step 0: Intent Recognition (CRITICAL - Do This First)

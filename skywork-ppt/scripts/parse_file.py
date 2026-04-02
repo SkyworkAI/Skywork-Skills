@@ -9,7 +9,6 @@ Usage:
     python parse_file.py /path/to/document.pdf [--output parsed_content.txt]
 
 Environment variables:
-    SKYWORK_GATEWAY_URL  - Base URL
     SKYWORK_API_KEY      - Auth api key
 """
 

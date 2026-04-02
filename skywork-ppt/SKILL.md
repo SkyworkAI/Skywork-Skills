@@ -35,6 +35,14 @@ For detailed setup instructions, see:
 
 ---
 
+## Privacy & Remote Calls (Read Before Use)
+
+- **Remote upload & processing**: Layers 1/2/4 upload local files and send the full, verbatim user query to the Skywork service. Avoid sensitive or confidential content unless you trust the remote service and its data handling policies.
+- **Local-only operations**: Layer 3 (local ops) runs entirely on-device and does **not** call the remote gateway. Use Layer 3 if you need strict local processing.
+- **Polling behavior**: The generation/edit workflows include periodic status polling (about every 5 seconds) while waiting for backend jobs. This is expected.
+
+---
+
 ## Routing — Identify the user's intent first
 
 | User intent | Which path |

@@ -19,7 +19,7 @@ import uuid
 from pptx import api
 
 
-from config import SKYWORK_GATEWAY_URL
+from constant import SKYWORK_GATEWAY_URL
 
 from skywork_auth import get_skywork_api_key
 

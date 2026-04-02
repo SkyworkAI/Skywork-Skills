@@ -14,8 +14,7 @@ Usage:
         --content "Based on the uploaded files, create an analysis..." \
         --files '[{"file_id":"2032146192467681280","filename":"report.pdf","url":""}]'
 
-Environment variables:
-    SKYWORK_GATEWAY_URL - Base URL
+Configuration:
     SKYWORK_API_KEY      - Auth (sent as Authorization: Bearer)
 """
 

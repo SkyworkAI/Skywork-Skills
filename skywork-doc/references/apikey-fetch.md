@@ -21,6 +21,7 @@ If your organization uses a separate console or test environment, use the URL an
 Edit the OpenClaw configuration file: `~/.openclaw/openclaw.json`
 
 In current OpenClaw, Skywork skills store the key under `skills.entries.<Skill Name>.apiKey` (not under `env`).
+OpenClaw will inject this value into the skill's `SKYWORK_API_KEY` environment when `primaryEnv` matches.
 Add or merge the following structure (adjust the skill name to match the installed skill):
 
 ```json

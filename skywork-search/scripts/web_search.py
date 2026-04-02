@@ -12,6 +12,7 @@ in a temporary directory and paths are printed to stdout.
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
 import urllib.request
@@ -65,6 +66,13 @@ def search(query: str) -> str:
     return "\n\n".join(lines)
 
 
+def safe_filename(value: str) -> str:
+    cleaned = re.sub(r"[^\w.-]+", "_", value, flags=re.UNICODE).strip("._-")
+    if not cleaned:
+        return "query"
+    return cleaned[:80]
+
+
 def main():
     parser = argparse.ArgumentParser(description="Search the web via Skywork API")
     parser.add_argument("queries", nargs="+", help="One or more search queries (max 3)")
@@ -76,7 +84,7 @@ def main():
     for q in queries:
         print(f"[query] {q} ...", file=sys.stderr, flush=True)
         raw = search(q)
-        out_path = os.path.join(out_dir, f"{q}_result.txt")
+        out_path = os.path.join(out_dir, f"{safe_filename(q)}_result.txt")
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(f"query: {q}\n\n{raw}")
         print(f"Saved: {out_path}", flush=True)
